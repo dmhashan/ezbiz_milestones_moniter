@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css" integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="https://bootswatch.com/4/slate/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular-resource.min.js"></script>
+	<title>ezBiz Milestones Moniter</title>
+</head>
+<body>
+	<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+	  <a class="navbar-brand" href="#">Navbar</a>
+	  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarColor01" aria-controls="navbarColor01" aria-expanded="false" aria-label="Toggle navigation">
+	    <span class="navbar-toggler-icon"></span>
+	  </button>
+	</nav>
+
+	<div class="container" ng-app="milestonesList" ng-controller="milestonesCtrl">
+	<div class="row">
+	  <div class="col-2">
+	  	<div class="list-group">
+	  	  <div ng-repeat="x in milestones">
+	  	  <a href="#" class="list-group-item list-group-item-action active" ng-click="loadIssues(x.id)">
+	  	    {{x.title}}
+	  	    <span ng-if="x.state == 'active'" class="badge badge-success">Active</span>
+	  	    <span ng-if="x.state == 'closed'" class="badge badge-warning">Closed</span>
+	  	  </a>
+	  	  </div>
+	  	</div>
+	  </div>
+	  <div class="col-8">
+	  	<div class="list-group">
+	  		
+	  		<div ng-if="errorMain" class="alert alert-danger alert-dismissible fade show" role="alert">
+	  		  <strong>Error</strong> {{errorMain}}
+	  		  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+	  		    <span aria-hidden="true">&times;</span>
+	  		  </button>
+	  		</div>
+
+	  		<div ng-if="errorSub" class="alert alert-warning alert-dismissible fade show" role="alert">
+	  		  <strong>Error</strong> {{errorSub}}
+	  		  <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+	  		    <span aria-hidden="true">&times;</span>
+	  		  </button>
+	  		</div>
+
+	  		<div ng-repeat="y in issues">
+		  	  <a href="#" class="list-group-item list-group-item-action active">
+		  	    {{y.title}}
+		  	    <span ng-repeat="z in y.labels" class="badge badge-info" style="margin-right: 10px">{{z}}</span>
+		  	  </a>
+	  	  	</div>
+	  	</div>
+	  </div>
+	  <div class="col-2">
+	  	<h1>{{count}}</h1>
+	  </div>
+	</div>
+</div>
+	<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+	<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script>
+
+	<script type="text/javascript">
+		var milestonesApp = angular.module("milestonesList", []); 
+		milestonesApp.controller("milestonesCtrl", function($scope, HttpService) {
+		    HttpService.getMilestones()
+			.then(function(response) {
+				$scope.milestones = response;
+			});
+			$scope.loadIssues = function (id) {
+			    HttpService.getIssues(id)
+				.then(function(response) {
+					$scope.issues = response;
+					$scope.calManPower(response);
+				});
+			};
+			$scope.calManPower = function (title) {
+				var matches;
+				var count = 0;
+				title.forEach(function(element) {
+					if(element.title.match(/[^[\]]+(?=])/g)) {
+						str = element.title.match(/[^[\]]+(?=])/g)[0];
+						strDays = 0;
+						if (!isNaN(str)) {
+							strDays = parseFloat(str);
+							count +=  parseFloat(strDays * 8.5);
+						} else if (/h/.test(str) && /[0-9]/.test(str)) {
+							count += parseFloat(str);
+						} else if (/d/.test(str) && /[0-9]/.test(str)) {
+							strDays = parseFloat(str);
+							count +=  parseFloat(strDays * 8.5);
+						} else {
+							$scope.errorSub = "Some issue has not calculated to total time estimation";
+						}
+					} else {
+						$scope.errorMain = "Some issue has not time estimation";
+					}
+				});
+				$scope.count = count;
+			}
+		});
+		milestonesApp.service('HttpService', function($http) {
+		  return {
+		    getMilestones: function() {
+		    return $http.get('https://code.thinkcube.net/api/v4/projects/ezbiz%2Fcore/milestones?private_token=zwU6ZuYrAs52ZF729Scs')
+		       .then(function (response) { return response.data; });
+		    },
+		    getIssues: function(id) {
+		    return $http.get('https://code.thinkcube.net/api/v4/projects/ezbiz%2Fcore/milestones/'+id+'/issues?private_token=zwU6ZuYrAs52ZF729Scs')
+		       .then(function (response) { return response.data; });
+		    }
+		  };
+		});
+	</script>
+
+</body>
+</html>
